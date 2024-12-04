@@ -2,6 +2,9 @@
 //
 
 #include "crow.h"
+#include <vector>
+#include <string>
+#include <unordered_map>
 
 int main() {
     crow::SimpleApp app; // Cria uma aplicação simples do Crow
@@ -31,7 +34,7 @@ int main() {
         res.set_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
         res.set_header("Access-Control-Allow-Headers", "Content-Type");
         return res;
-    });
+        });
 
     CROW_ROUTE(app, "/get/usuariosStatus")([]() {
         crow::json::wvalue data;
@@ -59,7 +62,7 @@ int main() {
         res.set_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
         res.set_header("Access-Control-Allow-Headers", "Content-Type");
         return res;
-    });
+        });
 
     CROW_ROUTE(app, "/get/usuarios")([]() {
         crow::json::wvalue data;
@@ -71,7 +74,7 @@ int main() {
         for (int i = 0; i < 5; ++i) { // Adicionando 5 usuários de exemplo
             crow::json::wvalue usuario;
             usuario["id"] = i + 1; // ID único
-            usuario["userId"] = "USR" + std::to_string(1000 + i); // Exemplo de userId
+            usuario["userId"] = std::to_string(1000 + i); // Exemplo de userId
             usuario["name"] = "Usuário " + std::to_string(i + 1); // Nome fictício
             usuario["cracha"] = "CR" + std::to_string(200 + i); // Exemplo de crachá
             usuario["isVerified"] = (i % 2 == 0); // Alterna entre true/false
@@ -96,16 +99,85 @@ int main() {
         res.set_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
         res.set_header("Access-Control-Allow-Headers", "Content-Type");
         return res;
-    });
+        });
 
+    CROW_ROUTE(app, "/get/usuario")([](const crow::request& req, crow::response& res) {
+        try {
+            // Extrair token do cabeçalho da requisição
+            auto tokenHeader = req.get_header_value("Authorization");
 
+            if (tokenHeader.empty()) {
+                res.code = 401;
+                res.write("Erro: Token ausente.");
+                res.end();
+                return;
+            }
 
+            // Verificar se o token é válido (simulação)
+            std::string expectedToken = "Bearer meu-token";
+            if (tokenHeader != expectedToken) {
+                res.code = 403;
+                res.write("Erro: Token inválido.");
+                res.end();
+                return;
+            }
+
+            // Parse do corpo do JSON enviado
+            auto body = crow::json::load(req.body);
+
+            // Verificar se o corpo é um objeto válido
+            if (!body) {
+                res.code = 400;
+                res.write("Erro: Corpo da requisição não é válido.");
+                res.end();
+                return;
+            }
+
+            // Verifica se o userId existe
+            if (!body.has("userId")) {
+                res.code = 400;
+                res.write("Erro: userId é inválido ou ausente.");
+                res.end();
+                return;
+            }
+
+            // Obtém os valores necessários
+            std::string userId = body["userId"].s();
+            std::string status = body["status"].s();
+
+            // Verifica o status do usuário
+            if (status == "banned") {
+                res.code = 403;
+                res.write("Erro: O usuário com userId " + userId + " está banido.");
+                res.end();
+                return;
+            }
+
+            // Retorna mensagem de sucesso se o status não for "banned"
+            res.code = 200;
+            res.write("Sucesso: O usuário com userId " + userId + " está ativo.");
+            res.end();
+
+        }
+        catch (const std::exception& e) {
+            // Lida com erros gerais
+            res.code = 500;
+            res.write("Erro interno: " + std::string(e.what()));
+            res.end();
+        }
+        catch (...) {
+            // Lida com erros desconhecidos
+            res.code = 500;
+            res.write("Erro interno: Ocorreu um erro inesperado.");
+            res.end();
+        }
+        });
 
     // Inicia o servidor na porta 8080
     app.port(8080).multithreaded().run();
 
     return 0;
-};
+}
 
 
 //#include <iostream>
